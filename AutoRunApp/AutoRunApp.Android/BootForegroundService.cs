@@ -4,6 +4,8 @@ using Android.Content;
 using Android.OS;
 using Android.Runtime;
 using Android.Support.V4.App;
+using Java.Lang;
+using Java.Util.Concurrent;
 using System;
 using System.Threading.Tasks;
 
@@ -14,6 +16,12 @@ namespace AutoRunApp.Droid
     public class BootForegroundService : Service
     {
         private static readonly string TAG = typeof(BootForegroundService).ToString();
+
+        IExecutorService ExecutorService;
+        Handler MainThreadHandler;
+        SomeTaskRepository SomeTaskRepository { get; set; }
+
+
 
         bool isStarted;
 
@@ -28,6 +36,11 @@ namespace AutoRunApp.Droid
             CheckOrCreateNotificationChannel();
             var notification = CreateNotifcation("앱이 실행중입니다.");
             StartForeground(Constants.FsId, notification);
+            ExecutorService = Executors.NewFixedThreadPool(Runtime.GetRuntime().AvailableProcessors());
+            MainThreadHandler = new Handler(Looper.MainLooper);
+            SomeTaskRepository = new SomeTaskRepository(ExecutorService, MainThreadHandler);
+
+            SomeTaskRepository.StartLongTask(null);
         }
 
         [return: GeneratedEnum]
@@ -70,6 +83,7 @@ namespace AutoRunApp.Droid
             //    notificationManager.Cancel(1);
             //}
             isStarted = false;
+            SomeTaskRepository.StopLongTask();
         }
 
         private Notification CreateNotifcation(string content)
